@@ -7,57 +7,93 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/os4ua/browser-crypto-mining/server/internal/track"
 	"inet.af/netaddr"
 )
 
-type trackRequest struct {
-	SessionID         uuid.UUID
-	CumulativeSeconds int
+type trackRegisterResponse struct {
+	SessionID uuid.UUID `json:"sessionId"`
 }
 
-func trackHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s := http.StatusMethodNotAllowed
-		respondJSON(w, s, newErrorResponse(http.StatusText(s)))
-		return
-	}
+type trackUpdateRequest struct {
+	SessionID      uuid.UUID `json:"sessionId"`
+	CumulativeTime float64   `json:"cumulativeTime"`
+}
 
-	defer r.Body.Close()
+func newTrackHandler(tr *track.Datastore) http.Handler {
+	mux := http.NewServeMux()
 
-	req := trackRequest{}
-	dec := json.NewDecoder(r.Body)
-	err := dec.Decode(&req)
-	if err != nil {
-		respondJSON(w, http.StatusBadRequest, newErrorResponse("Malformed JSON"))
-		return
-	}
+	handleFuncExact(mux, http.MethodPost, "/register", func(w http.ResponseWriter, r *http.Request) {
+		ip, err := requestIP(r)
+		if err != nil {
+			panic(err)
+		}
 
-	if req.SessionID == uuid.Nil {
-		respondJSON(w, http.StatusBadRequest, newErrorResponse("Missing sessionId"))
-		return
-	}
+		sid, err := tr.Register(ip)
+		if err == track.ErrIPTooManySessions {
+			respondJSON(w, http.StatusForbidden, newErrorResponse(err.Error()))
+			return
+		}
 
-	if req.CumulativeSeconds == 0 {
-		respondJSON(w, http.StatusBadRequest, newErrorResponse("Missing cumulativeSeconds"))
-		return
-	}
+		resp := trackRegisterResponse{
+			SessionID: sid,
+		}
 
+		log.Printf("register %s %s\n", ip, sid)
+
+		respondJSON(w, http.StatusOK, &resp)
+	})
+
+	handleFuncExact(mux, http.MethodPost, "/update", func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+
+		req := trackUpdateRequest{}
+		dec := json.NewDecoder(r.Body)
+		err := dec.Decode(&req)
+		if err != nil {
+			respondJSON(w, http.StatusBadRequest, newErrorResponse("Malformed JSON"))
+			return
+		}
+
+		if req.SessionID == uuid.Nil {
+			respondJSON(w, http.StatusBadRequest, newErrorResponse("Missing sessionId"))
+			return
+		}
+
+		if req.CumulativeTime == 0 {
+			respondJSON(w, http.StatusBadRequest, newErrorResponse("Missing cumulativeTime"))
+			return
+		}
+
+		ip, err := requestIP(r)
+		if err != nil {
+			panic(err)
+		}
+
+		err = tr.Update(req.SessionID, req.CumulativeTime)
+		if err != nil {
+			respondJSON(w, http.StatusBadGateway, newErrorResponse(err.Error()))
+			return
+		}
+
+		log.Printf("update %s %v\n", ip, req)
+	})
+
+	// Register default 404.
+	mux.HandleFunc("/", notFoundHandler)
+
+	return mux
+}
+
+func requestIP(r *http.Request) (netaddr.IP, error) {
 	// Get IP address from X-Forwarded-For, and fall back to request host.
-	var ip netaddr.IP
+
 	xff := r.Header.Get("X-Forwarded-For")
 	if xff != "" {
 		orig := strings.SplitN(xff, ",", 1)[0]
-		ip, err = netaddr.ParseIP(orig)
-	} else {
-		var ipPort netaddr.IPPort
-		ipPort, err = netaddr.ParseIPPort(r.RemoteAddr)
-		ip = ipPort.IP()
-	}
-	if err != nil {
-		panic(err)
+		return netaddr.ParseIP(orig)
 	}
 
-	log.Printf("/track %s %+v\n", ip, req)
-
-	// TODO: actually track :D
+	ipPort, err := netaddr.ParseIPPort(r.RemoteAddr)
+	return ipPort.IP(), err
 }

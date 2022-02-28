@@ -2,30 +2,34 @@ package server
 
 import (
 	"net/http"
+
+	"github.com/os4ua/browser-crypto-mining/server/internal/track"
 )
 
 func New() (http.Handler, error) {
+	tr := track.NewDatastore()
+
 	mux := http.NewServeMux()
 
 	// Register routes.
-	mux.HandleFunc("/track", trackHandler)
+	handlePrefix(mux, "/track", newTrackHandler(tr))
 
 	// Register default 404.
-	mux.HandleFunc("/", handleNotFound)
+	mux.HandleFunc("/", notFoundHandler)
 
 	// Apply middleware.
-	h := withRecover(mux)
+	h := withRecoveryHandler(mux)
 
 	return h, nil
 }
 
-func handleNotFound(w http.ResponseWriter, r *http.Request) {
+func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	s := http.StatusNotFound
 	respondJSON(w, s, newErrorResponse(http.StatusText(s)))
 }
 
-func withRecover(h http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func withRecoveryHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			if err := recover(); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -33,5 +37,5 @@ func withRecover(h http.Handler) http.HandlerFunc {
 		}()
 
 		h.ServeHTTP(w, r)
-	}
+	})
 }

@@ -27,8 +27,8 @@ func respondJSON(w http.ResponseWriter, status int, v interface{}) {
 	}
 }
 
-func newErrorResponse(msg string) errorResponse {
-	return errorResponse{
+func newErrorResponse(msg string) *errorResponse {
+	return &errorResponse{
 		Error: errorDetails{
 			Message: msg,
 		},
