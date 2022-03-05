@@ -1,0 +1,119 @@
+.container {
+  padding: 24px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  font-size: 16px;
+  height: 22px;
+  font-weight: 500;
+  display: flex;
+}
+
+.main {
+  width: 30rem;
+  text-align: center;
+  margin: 24px auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  h1 {
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 48px;
+  }
+
+  span {
+    font-weight: 500;
+    font-size: 14px;
+  }
+  a {
+    text-decoration: underline;
+  }
+
+ .donations {
+   border-radius: 4px;
+   background-color: #fff;
+   color: #000;
+   padding: 42px;
+   margin-bottom: 24px;
+
+   p {
+     font-weight: 700;
+     font-size: 56px;
+     margin: 21px 0;
+   }
+   .bitcoinDonations {
+     border-top: 2px solid rgba(0, 0, 0, 0.05);
+     h4 {
+       margin: 21px 0;
+       font-weight: 500;
+       font-size: 14px;
+     }
+     & > div {
+       background: rgba(0, 0, 0, 0.05);
+       border-radius: 4px;
+       padding: 10px;
+
+       span {
+         font-weight: 600;
+       }
+     }
+   }
+ }
+
+}
+
+.nav {
+  display: flex;
+  justify-content: center;
+  flex-grow: 1;
+  font-size: 14px;
+  padding: 0 12px;
+  & > a {
+    padding: 0 12px;
+    &:hover {
+      color: #f1ed9c;
+    }
+  }
+}
+
+.counters {
+  display: flex;
+  justify-content: space-evenly;
+}
+
+.counter {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  display: grid;
+  grid-template-areas:
+          'icon count'
+          'icon name';
+  grid-template-columns: 48px 1fr;
+  padding: 16px;
+  width: 260px;
+
+  & > div {
+    grid-area: icon;
+    display: flex;
+    justify-self: center;
+    align-self: center;
+    width: 48px;
+  }
+  & > p {
+    grid-area: count;
+    font-size: 20px;
+    margin: 0;
+  }
+  & > h5 {
+    grid-area: name;
+    font-weight: 500;
+    font-size: 14px;
+    margin: 0;
+  }
+}
